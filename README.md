@@ -41,6 +41,8 @@ Safe, reversible ADB optimization tool for the **Amazon Fire TV Stick 4K Max** (
 Make sure your Mac and Fire TV Stick 4K Max are on the **same Wi-Fi network**.
 
 ```bash
+git clone https://github.com/afalak/firetvcleaner.git
+cd firetvcleaner
 chmod +x firetv_cleaner.sh
 
 # 1. Connect and inspect device, storage, and bloat (read-only)
@@ -67,3 +69,9 @@ Every run writes a backup file in `backups/` and prints the exact restore comman
 ```bash
 ./firetv_cleaner.sh --target 192.168.1.50 --restore backups/backup-<model>-<timestamp>.txt
 ```
+
+## More Guides
+
+- [COMPLETE_GUIDE.md](COMPLETE_GUIDE.md) — Full step-by-step walkthrough (ADB concepts, backup/debloat, OTA blocking, USB migration, Projectivy Launcher)
+- [USB_AND_LAUNCHER.md](USB_AND_LAUNCHER.md) — Quick reference for USB OTG storage commands and Projectivy Launcher ADB setup
+
