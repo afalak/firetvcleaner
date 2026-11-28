@@ -8,11 +8,12 @@ This guide explains **everything** we did to turn a slow, nearly full **Amazon F
 
 | Metric | Before | After |
 | --- | --- | --- |
-| Main internal storage (`/data`, 4.9 GB) | **4.0 GB used (83% full, 870 MB free)** | **1.4 GB used (30% used, 3.4 GB free)** |
-| USB OTG pen drive (7.3 GB Adopted Storage) | **17 MB used (1% used, 7.2 GB free)** | **1.7 GB used (24% used, 5.5 GB free)** |
-| Home screen | Amazon ad-heavy launcher | **Projectivy Launcher v4.74** |
+| Main internal storage (`/data`, 4.9 GB) | **4.0 GB used (83% full, 870 MB free)** | **~2.0 GB used (~43% used, ~2.7 GB free)** |
+| USB OTG pen drive (7.3 GB Adopted Storage) | **17 MB used (1% used, 7.2 GB free)** | **Used for `/sdcard` & secondary apps** |
+| Home screen & Home button | Amazon ad-heavy launcher | **Projectivy Launcher v4.74** + **Home on Fire** |
 | Bloatware & telemetry | 29 bloat/tracking/OTA packages active | Disabled or background-restricted via `appops` |
 | Unwanted sideloaded/unused apps | 9 unused apps taking space | Uninstalled |
+| System-wide DNS ad & OTA blocking | None | **AdAway** (local VPN mode, blocklists + OTA domains) |
 | TV web browser | Amazon Silk only | **TV Bro v3.0.7** (`3.6 MB`, built-in ad blocker) + Silk |
 
 ---
@@ -24,7 +25,7 @@ This guide explains **everything** we did to turn a slow, nearly full **Amazon F
 3. **Why `/sdcard` isn't an SD card:** On Android/Fire OS, `/sdcard` is a **symlink** (shortcut) pointing to `/storage/self/primary` → internal `/data/media`. That's why downloaded movies and APKs eat up your main internal storage!
 4. **Adopted Storage (`private` volume):** When you format a USB pen drive as Internal/Adopted Storage on Fire TV, Android encrypts it with ext4 and assigns it a **UUID** (mounted at `/mnt/expand/<UUID>`). Because it's encrypted and managed by Android's `PackageManager`, you move data to it using `pm move-primary-storage` and `pm move-package` instead of plain `mv`.
 5. **OS-Protected Packages & `appops`:** On newer Fire OS builds (like `PS7713.5443N`), Amazon marks certain apps (e.g., OTA updates and log managers) as **protected**, causing `pm disable-user` to fail with `SecurityException`. When that happens, we use Android's **AppOps** (`cmd appops set <pkg> RUN_IN_BACKGROUND ignore`) to stop them from running in the background anyway.
-6. **Accessibility Service Launcher Override:** Fire OS blocks disabling `com.amazon.tv.launcher` directly. Projectivy Launcher works around this safely by using an Android **Accessibility Service** that detects when you press the Home button and immediately opens Projectivy instead.
+6. **Home Button Redirect (`Home on Fire`):** Fire OS 7 blocks disabling `com.amazon.tv.launcher` directly, and pressing **Home** activates Android 9's ~5-second `STOP_APP_SWITCHES` cooldown (which drops Projectivy's single-shot launcher override). **Home on Fire** waits out that brief lock under a clean loading overlay (plus lets you long-press/double-press Home to escape to Amazon Home, or map any spare remote button for instant launch).
 
 ---
 
@@ -138,7 +139,7 @@ done
 '
 ```
 
-To block OTA update downloads at the **DNS / network** level too, add these 5 domains to **AdAway → Your Lists → Blocked** (or your Wi-Fi router / Pi-hole / AdGuard):
+To block OTA update downloads at the **DNS / network** level too, install **AdAway** (VPN mode) on internal storage, whitelist it from Doze (`dumpsys deviceidle whitelist +org.adaway`), enable **Start on boot** in AdAway Preferences, and add these 5 domains to **AdAway → Your Lists → Blocked** (or your Wi-Fi router / Pi-hole / AdGuard):
 - `softwareupdates.amazon.com`
 - `updates.amazon.com`
 - `d1s31zyz7dcc2d.cloudfront.net`
@@ -187,9 +188,9 @@ done
 '
 ```
 
-> **Performance tip:** Now that `/data` has lots of free space, if your 2–3 most-used apps (like YouTube or Netflix) ever feel slow on a basic USB 2.0 drive, move just those back to fast internal storage:
+> **Important (Avoid App Stutter):** Keep your **launcher, active streaming apps (YouTube, Netflix, Prime Video, Apple TV, etc.), Home on Fire, and AdAway** on **fast internal memory (`/data`)**. Running active streaming apps or background VPN/launcher services from an adopted **USB 2.0 OTG pen drive** causes UI and playback stutter (`~25–35 MB/s` USB 2.0 OTG ceiling). Use the USB pen drive mainly for `/sdcard` and rarely used apps:
 > ```bash
-> adb -s 192.168.1.50:5555 shell pm move-package com.amazon.firetv.youtube internal
+> adb -s 192.168.1.50:5555 shell pm move-package <package_name> internal
 > ```
 
 ---
@@ -227,10 +228,23 @@ adb -s 192.168.1.50:5555 uninstall <package_name>
    adb -s 192.168.1.50:5555 shell monkey -p com.spocky.projengmenu -c android.intent.category.LAUNCHER 1
    ```
 5. **Configure Projectivy on your TV:**
-   - **Home override:** **Projectivy Settings → General → Override current launcher → ON**.
-   - **Favorites & sort:** **Settings → Edit categories → Favorites → Manage apps** to pin your favorite apps (for example, `YouTube`, `Netflix`, `Prime Video`), and set **Sort → Alphabetically**.
+   - **Favorites & sort:** **Settings → Edit categories → Favorites → Manage apps** to pin your favorite apps (for example, `YouTube`, `Netflix`, `Prime Video`, `Appstore`), and set **Sort → Alphabetically**.
    - **Compact cards & dark purple tint:** **Settings → Appearance → Cards → Cards size → 50%**, and **Settings → Appearance → Wallpaper → Dynamic colours** with **Picture adjustment → Brightness** dimmed slightly.
    - **Watch Next & Alexa Search note:** Fire OS 7 apps like Prime Video/Netflix don't feed Android TV's `Watch Next` row (only apps using Android TV's Watch Next/Channels API appear there). Pressing the remote's **Alexa Voice** button still searches across supported apps unless you disable `com.amazon.vizzini`.
+
+6. **Remap the Remote Home Button with Home on Fire (Fire OS 7 Fix):**
+   On Fire OS 7 (`PS7713.5443N`), pressing **Home** launches `com.amazon.tv.launcher/.ui.HomeActivity_vNext` and activates Android 9's ~5-second `STOP_APP_SWITCHES` cooldown, causing Projectivy's own **Override current launcher** hook to be dropped. Install [**Home on Fire**](https://github.com/toolicious/home-on-fire/releases) (`io.github.toolicious.homeonfire`, zero `INTERNET` permission) onto internal storage:
+   ```bash
+   curl -fL -o /tmp/home-on-fire.apk https://github.com/toolicious/home-on-fire/releases/latest/download/home-on-fire.apk
+   adb -s 192.168.1.50:5555 install -r /tmp/home-on-fire.apk
+   rm -f /tmp/home-on-fire.apk
+   adb -s 192.168.1.50:5555 shell pm grant io.github.toolicious.homeonfire android.permission.WRITE_SECURE_SETTINGS
+   adb -s 192.168.1.50:5555 shell dumpsys deviceidle whitelist +io.github.toolicious.homeonfire
+   adb -s 192.168.1.50:5555 shell am start -n io.github.toolicious.homeonfire/.MainActivity
+   ```
+   - In **Home on Fire**, pick **Projectivy Launcher** under **Choose target app…** and turn **Accessibility service (required)** **ON** (leave **Launch on boot** **ON**).
+   - In **Projectivy Settings → General**, turn **Override current launcher** **OFF** so only Home on Fire handles the redirect cleanly.
+   - **Long-press Home** (or **double-press Home** ~1 s apart) escapes to Amazon Home anytime; **long-press Menu (`☰`)** opens Home on Fire settings where you can optionally map a spare remote button for an instant 0-second Projectivy shortcut.
 
 ---
 

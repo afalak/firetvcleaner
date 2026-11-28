@@ -20,7 +20,7 @@ Example UUID format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`.
 
 ## 2. Move Specific Apps Between Internal Storage and USB
 
-Moving your top 2–3 daily apps (e.g. YouTube, Netflix) back to **internal** keeps cold launches and updates fast, while leaving less-used apps and downloads on the USB pen drive.
+> **Important (Avoid App Stutter):** Keep your **launcher, active streaming apps (Netflix, Prime Video, YouTube, Apple TV, etc.), Home on Fire, and AdAway** on **fast internal memory (`/data`)**. Running active streaming apps or background services from an adopted **USB 2.0 OTG pen drive** causes UI and playback stutter. Use the USB pen drive mainly for `/sdcard` (downloads/shared media) and rarely used apps.
 
 ### Check where third-party apps are currently installed
 ```bash
@@ -73,9 +73,9 @@ adb -s 192.168.1.50:5555 shell pm move-primary-storage internal
 
 ---
 
-## 5. Projectivy Launcher via ADB (Fire OS 7)
+## 5. Projectivy Launcher & Home Button Remap via ADB (Fire OS 7)
 
-Because Fire OS 7 protects `com.amazon.tv.launcher`, Projectivy overrides the Home button safely using Android's **Accessibility Service**.
+Install Projectivy on **internal** storage and enable its Accessibility Service:
 
 ```bash
 # Install Projectivy APK from your Mac
@@ -84,9 +84,28 @@ adb -s 192.168.1.50:5555 install -r ProjectivyLauncher.apk
 # Enable Projectivy's Accessibility Service without hunting through Fire OS settings
 adb -s 192.168.1.50:5555 shell settings put secure enabled_accessibility_services com.spocky.projengmenu/com.spocky.projengmenu.services.ProjectivyAccessibilityService
 adb -s 192.168.1.50:5555 shell settings put secure accessibility_enabled 1
+adb -s 192.168.1.50:5555 shell dumpsys deviceidle whitelist +com.spocky.projengmenu
 ```
 
-Then open **Projectivy Launcher → Settings → General → Override current launcher** and turn it **ON**.
+### Fix the Home Button Reverting to Amazon Home (Fire OS 7 `STOP_APP_SWITCHES`)
+
+On recent Fire OS 7 builds (such as `PS7713.5443N`), pressing **Home** launches `com.amazon.tv.launcher/.ui.HomeActivity_vNext` and activates Android 9's 5-second `STOP_APP_SWITCHES` cooldown, causing Projectivy's built-in **Override current launcher** call to be dropped (`Activity start request stopped`).
+
+Use the open-source helper [**Home on Fire**](https://github.com/toolicious/home-on-fire/releases) (`io.github.toolicious.homeonfire`, zero `INTERNET` permission) to handle the redirect cleanly:
+
+```bash
+adb -s 192.168.1.50:5555 install -r home-on-fire.apk
+adb -s 192.168.1.50:5555 shell pm grant io.github.toolicious.homeonfire android.permission.WRITE_SECURE_SETTINGS
+adb -s 192.168.1.50:5555 shell dumpsys deviceidle whitelist +io.github.toolicious.homeonfire
+adb -s 192.168.1.50:5555 shell am start -n io.github.toolicious.homeonfire/.MainActivity
+```
+
+1. In **Home on Fire**, pick **Projectivy Launcher** (`com.spocky.projengmenu`) under **Choose target app…** and turn **Accessibility service (required)** **ON** (leave **Launch on boot** **ON**).
+2. In **Projectivy Launcher → Settings → General**, turn **Override current launcher** **OFF** so only Home on Fire manages the redirect.
+3. **Controls:**
+   - **Single-press Home** (from an app): waits out Fire OS 7's up-to-5s cooldown under a brief loading overlay, then opens Projectivy.
+   - **Long-press Home** (or **double-press Home** ~1 s apart): escapes back to Amazon's stock Home screen when needed.
+   - **Instant launch (optional):** Hold **Menu (`☰`)** to open Home on Fire and bind any spare remote button under **Map custom buttons → Launcher** to skip the 5s Home cooldown completely.
 
 ---
 

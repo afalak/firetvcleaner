@@ -72,6 +72,6 @@ Every run writes a backup file in `backups/` and prints the exact restore comman
 
 ## More Guides
 
-- [COMPLETE_GUIDE.md](COMPLETE_GUIDE.md) — Full step-by-step walkthrough (ADB concepts, backup/debloat, OTA blocking, USB migration, Projectivy Launcher)
-- [USB_AND_LAUNCHER.md](USB_AND_LAUNCHER.md) — Quick reference for USB OTG storage commands and Projectivy Launcher ADB setup
+- [COMPLETE_GUIDE.md](COMPLETE_GUIDE.md) — Full step-by-step walkthrough (ADB concepts, backup/debloat, OTA & AdAway blocking, USB storage tips, Projectivy Launcher & Home on Fire remap)
+- [USB_AND_LAUNCHER.md](USB_AND_LAUNCHER.md) — Quick reference for USB OTG storage commands, Projectivy Launcher, and Home on Fire ADB setup
 
